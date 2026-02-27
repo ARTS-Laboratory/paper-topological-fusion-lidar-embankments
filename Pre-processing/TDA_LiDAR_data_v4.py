@@ -117,7 +117,7 @@ Z_mean = Z_plot.mean(axis=0)
 # =============================================================
 CONFIG_A = {
     "figsize": (6.5, 4.6),
-    "dpi": 300,
+    #"dpi": 300,
     "title_fs": 11,   # (unused here, kept for consistency)
     "label_fs": 11,
     "tick_fs": 11,
@@ -126,7 +126,7 @@ CONFIG_A = {
     "outfile": "pca_scree_eigenvalues.png"
 }
 
-fig_scree, ax_s = plt.subplots(figsize=CONFIG_A["figsize"], dpi=CONFIG_A["dpi"])
+fig_scree, ax_s = plt.subplots(figsize=CONFIG_A["figsize"])
 ax_s.bar(idx, eigs, color="#4c78a8", alpha=0.85)
 ax_s.plot(idx, eigs, "-ko", lw=1.4, ms=3.8)
 ax_s.axhline(1.0, ls="--", color="red", lw=1.2)
@@ -162,14 +162,14 @@ xpos = np.arange(len(mag))
 
 CONFIG_B = {
     "figsize": (11, 5),
-    "dpi": 300,
+    #"dpi": 300,
     "ylabel_fs": 11,
     "tick_fs": 11,
     "xtick_rotation": 90,
     "outfile": "pc1_loadings_bar_VERTICAL_abs.png"
 }
 
-fig_bar, ax_bar = plt.subplots(figsize=CONFIG_B["figsize"], dpi=CONFIG_B["dpi"], constrained_layout=True)
+fig_bar, ax_bar = plt.subplots(figsize=CONFIG_B["figsize"], constrained_layout=True)
 ax_bar.bar(xpos, mag, color=colors, width=0.75)
 ax_bar.set_ylabel(r"PC1 loading (importance)", fontsize=CONFIG_B["ylabel_fs"])
 ax_bar.set_xticks(xpos)
@@ -188,7 +188,7 @@ both_classes = (np.unique(y_lab).size == 2)
 
 CONFIG_C = {
     "figsize": (6.5, 5.0),
-    "dpi": 220,
+    #"dpi": 220,
     "axis_margin_frac": AXIS_MARGIN_FRAC,
     "grid_expand": GRID_EXPAND,
     "label_offset": LABEL_OFFSET,
@@ -201,7 +201,7 @@ CONFIG_C = {
     "outfile": "dates_pca_with_2Dlogreg_surface_RED50_filleddots.png"
 }
 
-fig, ax = plt.subplots(figsize=CONFIG_C["figsize"], dpi=CONFIG_C["dpi"])
+fig, ax = plt.subplots(figsize=CONFIG_C["figsize"])
 ax.set_axisbelow(True)
 ax.grid(True, which="both", linestyle="--", lw=0.5, alpha=0.35, zorder=0)
 
