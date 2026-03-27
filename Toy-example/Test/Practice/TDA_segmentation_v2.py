@@ -29,7 +29,7 @@ class tda:
         ]
         self.diag = None
 
-    def random_sampling_consensus(self, pcd, m=1000, K=10, out_prefix=None):
+    def random_sampling_consensus(self, pcd, m=100000, K=10, out_prefix=None):
         features_list = []
         last_subset = None
 
@@ -41,7 +41,6 @@ class tda:
             else:
                 subset = pcd
 
-            # keep the last sampled subset
             last_subset = subset.copy()
 
             diag = self.persistence.fit_transform([subset])
@@ -188,7 +187,8 @@ def save_features_csv(output_csv, features, homo_dim=1):
 
 def save_all_segments_feature_summary(output_csv, all_rows, homo_dim=1):
     header = [
-        "segment_id", "axis", "range_start", "range_end", "n_points"
+        "segment_id", "x_range_start", "x_range_end",
+        "y_range_start", "y_range_end", "n_points"
     ] + feature_header_list(homo_dim=homo_dim)
 
     with open(output_csv, "w", newline="") as f:
@@ -246,67 +246,87 @@ def plot_point_cloud_3d(
     plt.show()
 
 
-def segment_point_cloud_with_overlap(point_cloud, n_segments=5, overlap_ratio=0.1, axis="x"):
-    """
-    1D segmentation logic:
-    1. Choose one axis ("x" or "y")
-    2. Take min and max of that axis on the reduced dataset
-    3. Divide the axis extent into n_segments equal base intervals
-    4. Expand each interval by overlap_ratio * base_width
-    5. Use those overlapping intervals as segment windows
-    """
-    if axis not in ["x", "y"]:
-        raise ValueError("axis must be 'x' or 'y'")
+def segment_point_cloud_with_overlap_2d(
+    point_cloud,
+    n_segments_x=4,
+    n_segments_y=4,
+    overlap_ratio_x=0.2,
+    overlap_ratio_y=0.2
+):
+    x = point_cloud[:, 0]
+    y = point_cloud[:, 1]
 
-    axis_idx = 0 if axis == "x" else 1
-    coord = point_cloud[:, axis_idx]
+    xmin, xmax = np.min(x), np.max(x)
+    ymin, ymax = np.min(y), np.max(y)
 
-    cmin = np.min(coord)
-    cmax = np.max(coord)
-    total_length = cmax - cmin
+    x_total = xmax - xmin
+    y_total = ymax - ymin
 
-    if total_length == 0:
-        raise ValueError(f"All points have the same {axis}-coordinate; cannot segment.")
+    if x_total == 0 or y_total == 0:
+        raise ValueError("Point cloud extent in x or y is zero; cannot do 2D segmentation.")
 
-    base_width = total_length / n_segments
-    overlap_width = overlap_ratio * base_width
+    x_base_width = x_total / n_segments_x
+    y_base_width = y_total / n_segments_y
+
+    x_overlap_width = overlap_ratio_x * x_base_width
+    y_overlap_width = overlap_ratio_y * y_base_width
 
     segments = []
     summary_rows = []
 
-    for i in range(n_segments):
-        base_start = cmin + i * base_width
-        base_end = cmin + (i + 1) * base_width
+    for ix in range(n_segments_x):
+        x_base_start = xmin + ix * x_base_width
+        x_base_end = xmin + (ix + 1) * x_base_width
 
-        seg_start = max(cmin, base_start - overlap_width / 2.0)
-        seg_end = min(cmax, base_end + overlap_width / 2.0)
+        x_start = max(xmin, x_base_start - x_overlap_width / 2.0)
+        x_end = min(xmax, x_base_end + x_overlap_width / 2.0)
 
-        if i == 0:
-            seg_start = cmin
-        if i == n_segments - 1:
-            seg_end = cmax
+        if ix == 0:
+            x_start = xmin
+        if ix == n_segments_x - 1:
+            x_end = xmax
 
-        mask = (coord >= seg_start) & (coord <= seg_end)
-        seg_points = point_cloud[mask]
-        seg_id = f"segment_{i + 1:02d}"
+        for iy in range(n_segments_y):
+            y_base_start = ymin + iy * y_base_width
+            y_base_end = ymin + (iy + 1) * y_base_width
 
-        segments.append({
-            "segment_id": seg_id,
-            "segment_index": i + 1,
-            "axis": axis,
-            "range_start": seg_start,
-            "range_end": seg_end,
-            "points": seg_points
-        })
+            y_start = max(ymin, y_base_start - y_overlap_width / 2.0)
+            y_end = min(ymax, y_base_end + y_overlap_width / 2.0)
 
-        summary_rows.append([
-            seg_id,
-            axis,
-            seg_start,
-            seg_end,
-            overlap_ratio,
-            seg_points.shape[0]
-        ])
+            if iy == 0:
+                y_start = ymin
+            if iy == n_segments_y - 1:
+                y_end = ymax
+
+            mask = (
+                (x >= x_start) & (x <= x_end) &
+                (y >= y_start) & (y <= y_end)
+            )
+            seg_points = point_cloud[mask]
+
+            seg_id = f"segment_x{ix + 1:02d}_y{iy + 1:02d}"
+
+            segments.append({
+                "segment_id": seg_id,
+                "segment_index_x": ix + 1,
+                "segment_index_y": iy + 1,
+                "x_range_start": x_start,
+                "x_range_end": x_end,
+                "y_range_start": y_start,
+                "y_range_end": y_end,
+                "points": seg_points
+            })
+
+            summary_rows.append([
+                seg_id,
+                x_start,
+                x_end,
+                y_start,
+                y_end,
+                overlap_ratio_x,
+                overlap_ratio_y,
+                seg_points.shape[0]
+            ])
 
     return segments, summary_rows
 
@@ -314,10 +334,12 @@ def segment_point_cloud_with_overlap(point_cloud, n_segments=5, overlap_ratio=0.
 def save_segment_summary(summary_rows, output_csv):
     header = [
         "segment_id",
-        "axis",
-        "range_start",
-        "range_end",
-        "overlap_ratio",
+        "x_range_start",
+        "x_range_end",
+        "y_range_start",
+        "y_range_end",
+        "overlap_ratio_x",
+        "overlap_ratio_y",
         "n_points"
     ]
     with open(output_csv, "w", newline="") as f:
@@ -327,17 +349,23 @@ def save_segment_summary(summary_rows, output_csv):
     print(f"Saved: {output_csv}")
 
 
-def assign_segment_colors(point_cloud, segments, axis="x"):
-    axis_idx = 0 if axis == "x" else 1
-    coord = point_cloud[:, axis_idx]
+def assign_segment_colors_2d(point_cloud, segments):
+    x = point_cloud[:, 0]
+    y = point_cloud[:, 1]
     color_values = np.full(point_cloud.shape[0], -1, dtype=float)
 
-    for seg in segments:
-        idx = seg["segment_index"]
-        seg_start = seg["range_start"]
-        seg_end = seg["range_end"]
-        mask = (coord >= seg_start) & (coord <= seg_end) & (color_values < 0)
-        color_values[mask] = idx
+    for i, seg in enumerate(segments, start=1):
+        x0 = seg["x_range_start"]
+        x1 = seg["x_range_end"]
+        y0 = seg["y_range_start"]
+        y1 = seg["y_range_end"]
+
+        mask = (
+            (x >= x0) & (x <= x1) &
+            (y >= y0) & (y <= y1) &
+            (color_values < 0)
+        )
+        color_values[mask] = i
 
     color_values[color_values < 0] = 0
     return color_values
@@ -346,12 +374,11 @@ def assign_segment_colors(point_cloud, segments, axis="x"):
 def plot_segmented_cloud_3d(
     point_cloud,
     segments,
-    axis,
     title="Segmented Cloud",
     sample_for_plot=None,
     point_size=10
 ):
-    color_values = assign_segment_colors(point_cloud, segments, axis=axis)
+    color_values = assign_segment_colors_2d(point_cloud, segments)
 
     plot_point_cloud_3d(
         point_cloud=point_cloud,
@@ -363,40 +390,27 @@ def plot_segmented_cloud_3d(
     )
 
 
-def plot_segment_boundaries_2d(point_cloud, segments, axis="x", title="Segment boundaries on slope"):
-    """
-    2D helper plot to make segment intervals easier to read.
-    It plots the segmentation axis against elevation Z.
-    """
-    if axis == "x":
-        axis_idx = 0
-        axis_label = "X"
-    elif axis == "y":
-        axis_idx = 1
-        axis_label = "Y"
-    else:
-        raise ValueError("axis must be 'x' or 'y'")
-
-    coord = point_cloud[:, axis_idx]
-    z = point_cloud[:, 2]
-
-    plt.figure(figsize=(11, 6))
-    plt.scatter(coord, z, s=2, alpha=0.5)
-
-    z_top = np.max(z)
+def plot_segment_boundaries_2d(point_cloud, segments, title="2D segment boundaries on slope"):
+    plt.figure(figsize=(10, 8))
+    plt.scatter(point_cloud[:, 0], point_cloud[:, 1], s=2, alpha=0.5)
 
     for seg in segments:
-        x0 = seg["range_start"]
-        x1 = seg["range_end"]
+        x0 = seg["x_range_start"]
+        x1 = seg["x_range_end"]
+        y0 = seg["y_range_start"]
+        y1 = seg["y_range_end"]
         seg_name = seg["segment_id"]
+
+        xs = [x0, x1, x1, x0, x0]
+        ys = [y0, y0, y1, y1, y0]
+        plt.plot(xs, ys, linewidth=1)
+
         xm = 0.5 * (x0 + x1)
+        ym = 0.5 * (y0 + y1)
+        plt.text(xm, ym, seg_name, ha="center", va="center", fontsize=8)
 
-        plt.axvline(x0, linestyle="--", linewidth=1)
-        plt.axvline(x1, linestyle="--", linewidth=1)
-        plt.text(xm, z_top, seg_name, ha="center", va="bottom", fontsize=9)
-
-    plt.xlabel(axis_label)
-    plt.ylabel("Z")
+    plt.xlabel("X")
+    plt.ylabel("Y")
     plt.title(title)
     plt.grid(True)
     plt.tight_layout()
@@ -412,13 +426,14 @@ def process_single_las_file():
     homo_dim = 1
 
     # reduction settings
-    m = 1000                      # increase this for more points per TDA sample
-    K = 10                        # increase this for more stable consensus features
+    m = 1000
+    K = 10
 
     # segmentation settings
-    n_segments = 5                # number of segments
-    overlap_ratio = 0.20          # overlap ratio (0.20 = 20%)
-    segment_axis = "x"            # choose "x" or "y"
+    n_segments_x = 5
+    n_segments_y = 4
+    overlap_ratio_x = 0.20
+    overlap_ratio_y = 0.20
 
     # plotting settings
     plot_sample_full = 30000
@@ -455,7 +470,7 @@ def process_single_las_file():
     )
 
     # =========================
-    # 3) USE THE LAST SAMPLE OF YOUR K RUNS AS THE REDUCED DATASET
+    # 3) BUILD REDUCED DATASET FROM THE LAST SAMPLE OF YOUR K RUNS
     # =========================
     whole_reduced_prefix = os.path.join(output_dir, f"{prefix}_whole_reduced")
 
@@ -497,13 +512,14 @@ def process_single_las_file():
     )
 
     # =========================
-    # 5) SEGMENT THE REDUCED DATASET IN 1D
+    # 5) SEGMENT REDUCED DATASET IN 2D (X AND Y)
     # =========================
-    segments, segment_summary_rows = segment_point_cloud_with_overlap(
+    segments, segment_summary_rows = segment_point_cloud_with_overlap_2d(
         reduced_cloud,
-        n_segments=n_segments,
-        overlap_ratio=overlap_ratio,
-        axis=segment_axis
+        n_segments_x=n_segments_x,
+        n_segments_y=n_segments_y,
+        overlap_ratio_x=overlap_ratio_x,
+        overlap_ratio_y=overlap_ratio_y
     )
 
     segment_summary_csv = os.path.join(output_dir, f"{prefix}_segment_summary.csv")
@@ -515,8 +531,7 @@ def process_single_las_file():
     plot_segmented_cloud_3d(
         point_cloud=point_cloud,
         segments=segments,
-        axis=segment_axis,
-        title=f"Segment locations on MAIN slope ({segment_axis}-axis) - {prefix}",
+        title=f"Segment locations on MAIN slope (2D x-y segmentation) - {prefix}",
         sample_for_plot=plot_sample_full,
         point_size=2
     )
@@ -524,8 +539,7 @@ def process_single_las_file():
     plot_segment_boundaries_2d(
         point_cloud=point_cloud,
         segments=segments,
-        axis=segment_axis,
-        title=f"Segment boundaries on MAIN slope ({segment_axis}-axis) - {prefix}"
+        title=f"2D segment boundaries on MAIN slope - {prefix}"
     )
 
     # =========================
@@ -534,8 +548,7 @@ def process_single_las_file():
     plot_segmented_cloud_3d(
         point_cloud=reduced_cloud,
         segments=segments,
-        axis=segment_axis,
-        title=f"Segment locations on REDUCED slope ({segment_axis}-axis) - {prefix}",
+        title=f"Segment locations on REDUCED slope (2D x-y segmentation) - {prefix}",
         sample_for_plot=plot_sample_reduced,
         point_size=20
     )
@@ -543,8 +556,7 @@ def process_single_las_file():
     plot_segment_boundaries_2d(
         point_cloud=reduced_cloud,
         segments=segments,
-        axis=segment_axis,
-        title=f"Segment boundaries on REDUCED slope ({segment_axis}-axis) - {prefix}"
+        title=f"2D segment boundaries on REDUCED slope - {prefix}"
     )
 
     # =========================
@@ -572,12 +584,15 @@ def process_single_las_file():
     for seg in segments:
         seg_id = seg["segment_id"]
         seg_points = seg["points"]
-        seg_start = seg["range_start"]
-        seg_end = seg["range_end"]
+        x_start = seg["x_range_start"]
+        x_end = seg["x_range_end"]
+        y_start = seg["y_range_start"]
+        y_end = seg["y_range_end"]
 
         print("\n" + "=" * 70)
         print(f"Processing {seg_id}")
-        print(f"Range: {seg_start:.6f} to {seg_end:.6f}")
+        print(f"X range: {x_start:.6f} to {x_end:.6f}")
+        print(f"Y range: {y_start:.6f} to {y_end:.6f}")
         print(f"Points in segment: {seg_points.shape[0]}")
         print("=" * 70)
 
@@ -613,9 +628,10 @@ def process_single_las_file():
 
         row = [
             seg_id,
-            segment_axis,
-            seg_start,
-            seg_end,
+            x_start,
+            x_end,
+            y_start,
+            y_end,
             seg_points.shape[0]
         ] + list(seg_features)
 
@@ -643,3 +659,4 @@ if __name__ == "__main__":
         print(str(e))
         print("\nFULL TRACEBACK:")
         traceback.print_exc()
+
