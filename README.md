@@ -15,7 +15,7 @@ Cite this data as:
 
 #### Bibtex
 
-@Misc{ARTSLabCompactNmr,    
+@Misc{Zardian2026PaperTopologicalFusion,    
   author = {Mohsen Gol Zardian and Austin {R.J.} Downey},  
   howpublished = {GitHub},  
   title  = {paper-topological-fusion-lidar-embankments},  
