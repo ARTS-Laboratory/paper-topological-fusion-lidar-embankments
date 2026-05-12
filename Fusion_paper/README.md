@@ -24,7 +24,7 @@ This folder contains code that computes the solo-logistic regression for experim
 This folder contains the main analysis of Principal Component Analysis (PCA), along with logistic regression for both simulation and experimental analyses. High-dimensional features (16 dimensions in this case) are reduced to two dimensions (PC1 and PC2). Logistic regression is then employed to classify different types of abnormalities in the simulation study and to distinguish between wet and dry conditions in the experimental analysis.
 
 
-
+ 
 
 
 
