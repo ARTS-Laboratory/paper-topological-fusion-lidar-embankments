@@ -18,13 +18,14 @@ This work is licensed under a Creative Commons Attribution-ShareAlike 4.0 Intern
 
 Cite this as: 
 
-@Misc{ARTSLabPaper2026Fpga,    
-  author = {ARTS-Lab},  
-  howpublished = {GitHub},  
-  title  = {Paper-2026-{FPGA}-deployable-Approximate-Topological-Framework},    
-  groups = {ARTS-Lab},    
-  url    = {https://github.com/ARTS-Laboratory/paper-topological-fusion-lidar-embankments},   
+@misc{Zardian2026TDAFusionRepo,
+	author = {Zardian, Mohsen and Feng, Weicong and Zohuruzzaman, A. Q. M. and Downey, Austin R. J. et al},
+	title = {Paper: Topological Data Fusion of Multi-Season LiDAR Observations for Embankment Monitoring},
+	year = {2026},
+	howpublished = {\url{https://github.com/ARTS-Laboratory/paper-topological-fusion-lidar-embankments}},
+	note  = {GitHub repository, ARTS Laboratory}
 }
+
 
 
 
