@@ -8,7 +8,7 @@ This folder contains the code that receives feature values and ranks them by imp
 In this paper, we have two sets of features in a CSV file. One file is related to the simulation analysis, and another one is related to the experimental analysis.
 
 ### Feature_over_index:
-
+This folder contains code that calculates feature values using different numbers of sampling points. This demonstrates how quickly the features converge as dataset sample sizes increase, aiming to reduce computational costs.
 
 
 
