@@ -23,7 +23,7 @@ Cite this as:
   howpublished = {GitHub},  
   title  = {Paper-2026-{FPGA}-deployable-Approximate-Topological-Framework},    
   groups = {ARTS-Lab},    
-  url    = {https://github.com/ARTS-Laboratory/Paper-2026-FPGA-deployable-Approximate-Topological-Framework},   
+  url    = {https://github.com/ARTS-Laboratory/paper-topological-fusion-lidar-embankments},   
 }
 
 
