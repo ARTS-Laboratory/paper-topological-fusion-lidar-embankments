@@ -107,7 +107,7 @@ class tda:
 
 
 def process_single_las_file():
-    las_path = r"C:/Users/golzardm/Documents/Dataset-Slope-LiDAR-Embankment-SLidE/Data/2021-06/laz/2021-06.laz"
+    las_path = "slope_data.laz"
 
     my_tda = tda(homo_dim=1, fts='all')
 
